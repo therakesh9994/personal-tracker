@@ -50,6 +50,7 @@ as acceptance testing.
 
 ### Exercise library
 - ✅ Search, filter by muscle/equipment, favorites, custom create/edit/delete (archived if referenced)
+- 🟢 "How to perform" on every built-in exercise: looping animated anatomical figure with the worked muscles highlighted (primary and secondary, 14 muscle groups; Reanimated + SVG, offline, play/pause, slow motion, respects Reduce Motion) plus setup, steps, breathing, form cues, common mistakes and safety notes. Content lives in `src/features/exercise-guide/`. Custom exercises keep their free-text instructions
 
 ### Plans
 - ✅ Create, edit, duplicate, delete, start; days, weekday schedule, order, targets (sets, rep range, rest, weight)

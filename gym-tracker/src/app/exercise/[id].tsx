@@ -9,6 +9,8 @@ import { deleteCustomExercise, getExercise, parseSecondary, toggleFavorite } fro
 import { getExerciseHistory } from '@/features/workouts/service';
 import { listRecordsForExercise, RECORD_LABELS } from '@/features/personal-records/service';
 import { exerciseProgress } from '@/features/analytics/service';
+import { getExerciseGuide } from '@/features/exercise-guide/guides';
+import { HowToPerform } from '@/features/exercise-guide/HowToPerform';
 import { useQuery } from '@/hooks/useQuery';
 import { useSettings } from '@/hooks/useSettings';
 import { confirm, useAction } from '@/hooks/useAction';
@@ -38,6 +40,7 @@ export default function ExerciseDetail() {
       metric === 'reps' ? p.bestReps : round(kgToDisplay(metric === 'e1rm' ? p.bestE1rm : metric === 'weight' ? p.maxWeightKg : p.volumeKg, u), 1),
   }));
   const secondary = parseSecondary(ex);
+  const guide = ex.isCustom ? null : getExerciseGuide(ex.id);
 
   const del = async () => {
     if (!(await confirm('Delete exercise?', 'If this exercise appears in past workouts or plans it will be archived (hidden) instead, so your history stays intact.'))) return;
@@ -64,7 +67,7 @@ export default function ExerciseDetail() {
             {ex.isCustom ? ' · Custom' : ''}
             {ex.isArchived ? ' · Archived' : ''}
           </Text>
-          {ex.instructions ? <Text color={colors.textSecondary}>{ex.instructions}</Text> : null}
+          {!guide && ex.instructions ? <Text color={colors.textSecondary}>{ex.instructions}</Text> : null}
           {ex.isCustom ? (
             <Row>
               <Button title="Edit" icon={Pencil} size="sm" variant="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/exercise/edit', params: { id: ex.id } })} />
@@ -72,6 +75,8 @@ export default function ExerciseDetail() {
             </Row>
           ) : null}
         </Card>
+
+        {guide ? <HowToPerform guide={guide} exerciseName={ex.name} /> : null}
 
         <Card>
           <SectionHeader title="Strength progression" />
