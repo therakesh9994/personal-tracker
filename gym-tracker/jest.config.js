@@ -18,12 +18,13 @@ module.exports = {
       testMatch: ['<rootDir>/src/**/__tests__/**/*.test.tsx'],
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
-        // The package's ESM entry is .mjs, which jest-expo does not transform.
-        '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
+        // jest-expo resolves the package's "react-native" export (.mjs, not transformed);
+        // use its CommonJS "require" entry, looked up from the package manifest.
+        '^lucide-react-native$': require.resolve('lucide-react-native'),
       },
       // jest-expo's default list plus the ESM-only packages that screens import.
       transformIgnorePatterns: [
-        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|react-native-svg|lucide-react-native|victory-native|@shopify/.*|drizzle-orm|date-fns|fflate|standard-navigation)',
+        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|react-native-svg|victory-native|@shopify/.*|drizzle-orm|date-fns|fflate|standard-navigation)',
       ],
       setupFiles: ['<rootDir>/jest.setup.logic.js'],
     },

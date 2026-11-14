@@ -5,7 +5,7 @@ import { createAnimatedComponent, useAnimatedProps, useDerivedValue, useFrameCal
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { colors, radius } from '@/theme';
 import { ANATOMY } from './palette';
-import { drawConfig, drawFrame, type DrawItem, type MuscleTargets, type Role } from './drawing';
+import { drawConfig, drawFrame, drawStatic, type DrawItem, type MuscleTargets, type Role } from './drawing';
 import { loopFrames, PATTERNS, type PatternId } from './patterns';
 import { poseAt, solvePose, VIEW } from './skeleton';
 
@@ -106,6 +106,7 @@ export function ExerciseAnimation({
   const n = frames.length;
   const msPerFrame = p.tempo / speed;
 
+  const staticItems = useMemo(() => drawStatic(cfg), [cfg]);
   const items = useMemo(() => drawFrame(solvePose(poseAt(frames, 0, hold), view, feet), cfg), [frames, cfg, hold, view, feet]);
   const t = useSharedValue(0);
   const ms = useSharedValue(msPerFrame);
@@ -134,9 +135,11 @@ export function ExerciseAnimation({
       accessibilityLabel={accessibilityLabel}
       style={{ width: '100%', aspectRatio: VIEW.w / VIEW.h, maxHeight: 280, alignSelf: 'center', backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' }}
     >
-      <Svg key={pattern} width="100%" height="100%" viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`}>
+      <Svg width="100%" height="100%" viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`}>
+        {staticItems.map((item, i) => (
+          <StaticItem key={`s${i}`} item={item} />
+        ))}
         {items.map((item, i) => {
-          if (item.role === 'scene') return <StaticItem key={i} item={item} />;
           if (item.k === 'l') return <LineItem key={i} i={i} geo={geo} item={item} />;
           if (item.k === 'c') return <CircleItem key={i} i={i} geo={geo} item={item} />;
           return <PathItem key={i} i={i} geo={geo} item={item} />;

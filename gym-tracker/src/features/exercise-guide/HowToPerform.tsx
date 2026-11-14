@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, View } from 'react-native';
 import { CircleCheck, CircleX, Pause, Play, Snail, TriangleAlert, Wind, type LucideIcon } from 'lucide-react-native';
 import { Button, Card, Row, SectionHeader, Text } from '@/components/ui';
-import { colors, radius, spacing } from '@/theme';
-import { MUSCLE_NAMES, type Muscle } from './drawing';
+import { colors, radius, spacing, withAlpha } from '@/theme';
+import { canShowMuscle, MUSCLE_NAMES, type Muscle } from './drawing';
+import { PATTERNS } from './patterns';
 import { ExerciseAnimation } from './ExerciseAnimation';
 import { ANATOMY } from './palette';
 import type { ExerciseGuide } from './guides';
@@ -40,17 +41,37 @@ function IconList({ items, icon: Icon, color }: { items: string[]; icon: LucideI
   );
 }
 
-function MuscleLegend({ label, color, muscles }: { label: string; color: string; muscles: Muscle[] }) {
+function MuscleLegend({ label, color, muscles, hidden }: { label: string; color: string; muscles: Muscle[]; hidden: (m: Muscle) => boolean }) {
   if (muscles.length === 0) return null;
   return (
     <Row style={{ alignItems: 'flex-start' }}>
       <View style={{ width: 12, height: 12, borderRadius: radius.pill, backgroundColor: color, marginTop: 4 }} />
       <Text style={{ flex: 1 }}>
         <Text variant="bodyStrong">{label}: </Text>
-        <Text color={colors.textSecondary}>{muscles.map((m) => MUSCLE_NAMES[m]).join(', ')}</Text>
+        <Text color={colors.textSecondary}>{muscles.map((m) => MUSCLE_NAMES[m] + (hidden(m) ? ' (back, not shown)' : '')).join(', ')}</Text>
       </Text>
     </Row>
   );
+}
+
+/**
+ * The system "Reduce motion" setting, kept up to date while mounted.
+ * null until the first answer arrives.
+ */
+function useReduceMotion(): boolean | null {
+  const [reduce, setReduce] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => active && setReduce(v))
+      .catch(() => active && setReduce(false));
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    return () => {
+      active = false;
+      sub.remove();
+    };
+  }, []);
+  return reduce;
 }
 
 function Label({ children }: { children: string }) {
@@ -63,21 +84,13 @@ function Label({ children }: { children: string }) {
 
 /** "How to perform" card: animated demo plus a step-by-step written guide. */
 export function HowToPerform({ guide, exerciseName }: { guide: ExerciseGuide; exerciseName: string }) {
-  const [playing, setPlaying] = useState(true);
+  const reduceMotion = useReduceMotion();
+  // The user's explicit Play/Pause choice wins; until they make one, follow the system setting
+  // (and stay still until that setting is known, so nothing flashes for reduce-motion users).
+  const [userPlaying, setUserPlaying] = useState<boolean | null>(null);
+  const playing = userPlaying ?? reduceMotion === false;
   const [slow, setSlow] = useState(false);
-
-  // Respect the system "Reduce motion" setting: start paused (the user can still press Play).
-  useEffect(() => {
-    let active = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((reduce) => {
-        if (active && reduce) setPlaying(false);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
+  const hiddenInView = (m: Muscle) => !canShowMuscle(PATTERNS[guide.pattern].view, m);
 
   return (
     <Card>
@@ -97,7 +110,7 @@ export function HowToPerform({ guide, exerciseName }: { guide: ExerciseGuide; ex
           size="sm"
           variant="secondary"
           style={{ flex: 1 }}
-          onPress={() => setPlaying((p) => !p)}
+          onPress={() => setUserPlaying(!playing)}
           accessibilityLabel={playing ? 'Pause animation' : 'Play animation'}
         />
         <Button
@@ -110,8 +123,8 @@ export function HowToPerform({ guide, exerciseName }: { guide: ExerciseGuide; ex
         />
       </Row>
       <View style={{ gap: spacing.xs }}>
-        <MuscleLegend label="Primary" color={ANATOMY.primary} muscles={guide.muscles.primary} />
-        <MuscleLegend label="Secondary" color={ANATOMY.secondary} muscles={guide.muscles.secondary} />
+        <MuscleLegend label="Primary" color={ANATOMY.primary} muscles={guide.muscles.primary} hidden={hiddenInView} />
+        <MuscleLegend label="Secondary" color={ANATOMY.secondary} muscles={guide.muscles.secondary} hidden={hiddenInView} />
       </View>
 
       <Label>Setup</Label>
@@ -135,7 +148,7 @@ export function HowToPerform({ guide, exerciseName }: { guide: ExerciseGuide; ex
       <IconList items={guide.mistakes} icon={CircleX} color={colors.error} />
 
       {guide.safety ? (
-        <Row style={{ alignItems: 'flex-start', backgroundColor: 'rgba(244,185,66,0.1)', borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.xs }}>
+        <Row style={{ alignItems: 'flex-start', backgroundColor: withAlpha(colors.warning, 0.1), borderRadius: radius.sm, padding: spacing.md, marginTop: spacing.xs }}>
           <TriangleAlert color={colors.warning} size={16} style={{ marginTop: 2 }} />
           <Text style={{ flex: 1 }}>{guide.safety}</Text>
         </Row>

@@ -19,6 +19,12 @@ export const colors = {
   series: ['#B6F23A', '#65D98B', '#F4B942', '#5CC8FF', '#FF8A5C', '#C792EA'],
 } as const;
 
+/** A token colour (#RRGGBB) at the given opacity, e.g. a tinted background behind an icon. */
+export function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
 export const spacing = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 
 export const radius = { sm: 8, md: 12, lg: 18, xl: 20, pill: 999 } as const;

@@ -45,6 +45,14 @@ export const MUSCLE_NAMES: Record<Muscle, string> = {
   calves: 'Calves',
 };
 
+/** Muscles on the back of the body that a front-view figure cannot show. */
+const HIDDEN_IN_FRONT: readonly Muscle[] = ['hamstrings', 'lowerBack'];
+
+/** Whether the figure can show this muscle in the given view. */
+export function canShowMuscle(view: 'side' | 'front', m: Muscle): boolean {
+  return view === 'side' || !HIDDEN_IN_FRONT.includes(m);
+}
+
 export interface MuscleTargets {
   primary: Muscle[];
   secondary: Muscle[];
@@ -70,6 +78,8 @@ export interface DrawItem {
   w: number;
   v: number[];
   d?: string;
+  /** For muscle shapes: which muscle this is. */
+  m?: Muscle;
 }
 
 export interface DrawConfig {
@@ -200,9 +210,16 @@ function muscleRole(cfg: DrawConfig, m: Muscle, far: boolean): Role | null {
   return far ? null : 'muscle';
 }
 
-function shape(out: DrawItem[], d: string, role: Role | null) {
+function shape(out: DrawItem[], d: string, role: Role) {
   'worklet';
-  if (role) out.push({ k: 'f', role, w: 0.6, v: [], d });
+  out.push({ k: 'f', role, w: 0.6, v: [], d });
+}
+
+/** A muscle shape, skipped on the far side unless it is worked. */
+function muscle(out: DrawItem[], cfg: DrawConfig, m: Muscle, far: boolean, d: string) {
+  'worklet';
+  const role = muscleRole(cfg, m, far);
+  if (role) out.push({ k: 'f', role, w: 0.6, v: [], d, m });
 }
 
 // ---------------------------------------------------------------------------
@@ -219,21 +236,21 @@ function sideLimbs(out: DrawItem[], sk: Skeleton, cfg: DrawConfig, near: boolean
   const ankle = near ? sk.ankleN : sk.ankleF;
   const toe = near ? sk.toeN : sk.toeF;
   shape(out, capsule(hip, knee, R.thigh[0], R.thigh[1]), skin);
-  shape(out, lens(hip, knee, 0.1, 0.9, 6.4, s, 0.7), muscleRole(cfg, 'quads', far));
-  shape(out, lens(hip, knee, 0.18, 0.86, 6.2, -s, 0.5), muscleRole(cfg, 'hamstrings', far));
+  muscle(out, cfg, 'quads', far, lens(hip, knee, 0.1, 0.9, 6.4, s, 0.7));
+  muscle(out, cfg, 'hamstrings', far, lens(hip, knee, 0.18, 0.86, 6.2, -s, 0.5));
   shape(out, capsule(knee, ankle, R.shin[0], R.shin[1]), skin);
-  shape(out, lens(knee, ankle, 0.06, 0.58, 4.4, -s, 1.1), muscleRole(cfg, 'calves', far));
+  muscle(out, cfg, 'calves', far, lens(knee, ankle, 0.06, 0.58, 4.4, -s, 1.1));
   shape(out, capsule(ankle, toe, R.foot[0], R.foot[1]), skin);
 
   const sh = near ? sk.shoulderN : sk.shoulderF;
   const elbow = near ? sk.elbowN : sk.elbowF;
   const handP = near ? sk.handN : sk.handF;
   shape(out, capsule(sh, elbow, R.upperArm[0], R.upperArm[1]), skin);
-  shape(out, lens(sh, elbow, 0.26, 0.9, 4.1, s, 0.7), muscleRole(cfg, 'biceps', far));
-  shape(out, lens(sh, elbow, 0.16, 0.86, 4.1, -s, 0.5), muscleRole(cfg, 'triceps', far));
-  shape(out, lens(sh, elbow, -0.18, 0.4, 0, 0, 5), muscleRole(cfg, 'delts', far));
+  muscle(out, cfg, 'biceps', far, lens(sh, elbow, 0.26, 0.9, 4.1, s, 0.7));
+  muscle(out, cfg, 'triceps', far, lens(sh, elbow, 0.16, 0.86, 4.1, -s, 0.5));
+  muscle(out, cfg, 'delts', far, lens(sh, elbow, -0.18, 0.4, 0, 0, 5));
   shape(out, capsule(elbow, handP, R.forearm[0], R.forearm[1]), skin);
-  shape(out, lens(elbow, handP, 0.05, 0.6, 3.2, s, 0.4), muscleRole(cfg, 'forearms', far));
+  muscle(out, cfg, 'forearms', far, lens(elbow, handP, 0.05, 0.6, 3.2, s, 0.4));
   out.push({ k: 'c', role: skin, w: 0, v: [handP[0], handP[1], R.hand] });
 }
 
@@ -265,13 +282,13 @@ function sideTorso(out: DrawItem[], sk: Skeleton, cfg: DrawConfig) {
   shape(out, smoothClosed(pts), 'skin');
   // lens() side 1 = (d.y, -d.x) = -n·facing, so the anterior side is -facing.
   const front = -cfg.facing;
-  shape(out, lens(a, b, -0.08, 0.32, 9, -front, 1.4), muscleRole(cfg, 'glutes', false));
-  shape(out, lens(a, b, 0.3, 0.56, 6, -front, 0.2), muscleRole(cfg, 'lowerBack', false));
-  shape(out, lens(a, b, 0.46, 0.86, 7.6, -front, 0.6), muscleRole(cfg, 'lats', false));
-  shape(out, lens(a, b, 0.84, 1.1, 6.4, -front, 0.6), muscleRole(cfg, 'traps', false));
-  shape(out, lens(a, b, 0.12, 0.58, 6.8, front, 0.3), muscleRole(cfg, 'abs', false));
-  shape(out, lens(a, b, 0.2, 0.52, 0, 0, 2.6), muscleRole(cfg, 'obliques', false));
-  shape(out, lens(a, b, 0.58, 0.94, 10, front, 0.9), muscleRole(cfg, 'pecs', false));
+  muscle(out, cfg, 'glutes', false, lens(a, b, -0.08, 0.32, 9, -front, 1.4));
+  muscle(out, cfg, 'lowerBack', false, lens(a, b, 0.3, 0.56, 6, -front, 0.2));
+  muscle(out, cfg, 'lats', false, lens(a, b, 0.46, 0.86, 7.6, -front, 0.6));
+  muscle(out, cfg, 'traps', false, lens(a, b, 0.84, 1.1, 6.4, -front, 0.6));
+  muscle(out, cfg, 'abs', false, lens(a, b, 0.12, 0.58, 6.8, front, 0.3));
+  muscle(out, cfg, 'obliques', false, lens(a, b, 0.2, 0.52, 0, 0, 2.6));
+  muscle(out, cfg, 'pecs', false, lens(a, b, 0.58, 0.94, 10, front, 0.9));
 }
 
 function frontTorso(out: DrawItem[], sk: Skeleton, cfg: DrawConfig) {
@@ -294,13 +311,13 @@ function frontTorso(out: DrawItem[], sk: Skeleton, cfg: DrawConfig) {
   for (let i = half.length - 1; i >= 0; i--) pts.push(P(half[i][0], -half[i][1]));
   shape(out, smoothClosed(pts), 'skin');
   for (let sgn = -1; sgn <= 1; sgn += 2) {
-    shape(out, ellipse(P(1.0, sgn * 8.5), r, 5.5, 2.4), muscleRole(cfg, 'traps', false));
-    shape(out, ellipse(P(0.6, sgn * 12.6), u, 8, 2.3), muscleRole(cfg, 'lats', false));
-    shape(out, ellipse(P(0.38, sgn * 9.4), u, 6.5, 2.3), muscleRole(cfg, 'obliques', false));
-    shape(out, ellipse(P(0.79, sgn * 6.8), r, 6.6, 4.4), muscleRole(cfg, 'pecs', false));
-    shape(out, ellipse(P(0.02, sgn * 11), u, 4, 2.2), muscleRole(cfg, 'glutes', false));
+    muscle(out, cfg, 'traps', false, ellipse(P(1.0, sgn * 8.5), r, 5.5, 2.4));
+    muscle(out, cfg, 'lats', false, ellipse(P(0.6, sgn * 12.6), u, 8, 2.3));
+    muscle(out, cfg, 'obliques', false, ellipse(P(0.38, sgn * 9.4), u, 6.5, 2.3));
+    muscle(out, cfg, 'pecs', false, ellipse(P(0.79, sgn * 6.8), r, 6.6, 4.4));
+    muscle(out, cfg, 'glutes', false, ellipse(P(0.02, sgn * 11), u, 4, 2.2));
   }
-  shape(out, ellipse(P(0.36, 0), u, 10.5, 4.8), muscleRole(cfg, 'abs', false));
+  muscle(out, cfg, 'abs', false, ellipse(P(0.36, 0), u, 10.5, 4.8));
 }
 
 function frontLimbs(out: DrawItem[], sk: Skeleton, cfg: DrawConfig, near: boolean) {
@@ -310,20 +327,22 @@ function frontLimbs(out: DrawItem[], sk: Skeleton, cfg: DrawConfig, near: boolea
   const ankle = near ? sk.ankleN : sk.ankleF;
   const toe = near ? sk.toeN : sk.toeF;
   shape(out, capsule(hip, knee, R.thigh[0], R.thigh[1]), 'skin');
-  shape(out, lens(hip, knee, 0.1, 0.88, 0, 0, 5.2), muscleRole(cfg, 'quads', false));
+  muscle(out, cfg, 'quads', false, lens(hip, knee, 0.1, 0.88, 0, 0, 5.2));
   shape(out, capsule(knee, ankle, R.shin[0], R.shin[1]), 'skin');
-  shape(out, lens(knee, ankle, 0.08, 0.55, 0, 0, 3.2), muscleRole(cfg, 'calves', false));
+  muscle(out, cfg, 'calves', false, lens(knee, ankle, 0.08, 0.55, 0, 0, 3.2));
   shape(out, capsule(ankle, toe, R.foot[0], R.foot[1]), 'skin');
 
   const sh = near ? sk.shoulderN : sk.shoulderF;
   const elbow = near ? sk.elbowN : sk.elbowF;
   const handP = near ? sk.handN : sk.handF;
   shape(out, capsule(sh, elbow, R.upperArm[0], R.upperArm[1]), 'skin');
-  shape(out, lens(sh, elbow, 0.3, 0.88, 0, 0, 3), muscleRole(cfg, 'biceps', false));
+  // The triceps' outer head shows along the outside edge of the arm from the front.
+  muscle(out, cfg, 'triceps', false, lens(sh, elbow, 0.2, 0.86, 4.1, near ? 1 : -1, 0.3));
+  muscle(out, cfg, 'biceps', false, lens(sh, elbow, 0.3, 0.88, 0, 0, 3));
   shape(out, capsule(elbow, handP, R.forearm[0], R.forearm[1]), 'skin');
-  shape(out, lens(elbow, handP, 0.05, 0.6, 0, 0, 2.6), muscleRole(cfg, 'forearms', false));
+  muscle(out, cfg, 'forearms', false, lens(elbow, handP, 0.05, 0.6, 0, 0, 2.6));
   const ad = unit(sh, elbow);
-  shape(out, ellipse([sh[0] + ad[0] * 2.5, sh[1] + ad[1] * 2.5], ad, 6, 4.6), muscleRole(cfg, 'delts', false));
+  muscle(out, cfg, 'delts', false, ellipse([sh[0] + ad[0] * 2.5, sh[1] + ad[1] * 2.5], ad, 6, 4.6));
   out.push({ k: 'c', role: 'skin', w: 0, v: [handP[0], handP[1], R.hand] });
 }
 
@@ -416,16 +435,20 @@ function propsFront(out: DrawItem[], sk: Skeleton, cfg: DrawConfig) {
   }
 }
 
-/** All drawing primitives for one frame, back to front. */
-export function drawFrame(sk: Skeleton, cfg: DrawConfig): DrawItem[] {
-  'worklet';
-  const out: DrawItem[] = [];
-  seg(out, [8, FLOOR + 1.5], [192, FLOOR + 1.5], 'scene', 2);
-  for (let i = 0; i < cfg.scene.length; i++) {
-    const s = cfg.scene[i];
+/** Floor and scenery: these never move, so they are built once, not every frame. */
+export function drawStatic(cfg: DrawConfig): DrawItem[] {
+  const out: DrawItem[] = [{ k: 'l', role: 'scene', w: 2, v: [8, FLOOR + 1.5, 192, FLOOR + 1.5] }];
+  for (const s of cfg.scene) {
     if ('line' in s) out.push({ k: 'l', role: 'scene', w: s.w ?? 3, v: [s.line[0], s.line[1], s.line[2], s.line[3]] });
     else out.push({ k: 'c', role: 'scene', w: 3, v: [s.circle[0], s.circle[1], s.circle[2]] });
   }
+  return out;
+}
+
+/** Moving primitives for one frame (figure and equipment), back to front. Drawn over drawStatic(). */
+export function drawFrame(sk: Skeleton, cfg: DrawConfig): DrawItem[] {
+  'worklet';
+  const out: DrawItem[] = [];
   propsBehind(out, sk, cfg);
   if (cfg.view === 'side') {
     sideLimbs(out, sk, cfg, false);

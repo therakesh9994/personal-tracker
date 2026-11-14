@@ -67,7 +67,7 @@ export default function ExerciseDetail() {
             {ex.isCustom ? ' · Custom' : ''}
             {ex.isArchived ? ' · Archived' : ''}
           </Text>
-          {!guide && ex.instructions ? <Text color={colors.textSecondary}>{ex.instructions}</Text> : null}
+          {ex.instructions ? <Text color={colors.textSecondary}>{ex.instructions}</Text> : null}
           {ex.isCustom ? (
             <Row>
               <Button title="Edit" icon={Pencil} size="sm" variant="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/exercise/edit', params: { id: ex.id } })} />

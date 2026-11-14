@@ -1,5 +1,5 @@
 import { EXERCISE_LIBRARY } from '@/constants/exerciseLibrary';
-import { drawConfig, drawFrame, MUSCLES } from '../drawing';
+import { canShowMuscle, drawConfig, drawFrame, drawStatic, MUSCLES } from '../drawing';
 import { EXERCISE_GUIDES, getExerciseGuide } from '../guides';
 import { loopFrames, PATTERNS, type PatternId } from '../patterns';
 import { LEN, poseAt, solveIk, solvePose, type Limb, type Pose, type Vec } from '../skeleton';
@@ -31,10 +31,25 @@ describe('exercise guides', () => {
     for (const m of [...g.muscles.primary, ...g.muscles.secondary]) expect(MUSCLES).toContain(m);
   });
 
-  it.each(Object.entries(EXERCISE_GUIDES))('%s highlights its primary muscles on the figure', (_id, g) => {
+  it.each(Object.entries(EXERCISE_GUIDES))('%s highlights exactly the listed muscles its view can show', (_id, g) => {
     const p = PATTERNS[g.pattern];
     const items = drawFrame(solvePose(loopFrames(p)[0], p.view, p.feet ?? 1), drawConfig(p, g.muscles));
-    expect(items.some((i) => i.role === 'primary')).toBe(true);
+    const drawn = (roles: string[]) => [...new Set(items.filter((i) => i.m && roles.includes(i.role)).map((i) => i.m))].sort();
+    const visible = (list: typeof g.muscles.primary) => list.filter((m) => canShowMuscle(p.view, m)).sort();
+    expect(drawn(['primary', 'primaryFar'])).toEqual(visible(g.muscles.primary));
+    expect(drawn(['secondary', 'secondaryFar'])).toEqual(visible(g.muscles.secondary));
+    // At least one primary muscle must be visible, or the figure shows nothing being worked.
+    expect(visible(g.muscles.primary).length).toBeGreaterThan(0);
+  });
+
+  it('every muscle except the front-hidden ones can be drawn in both views', () => {
+    const all = { primary: [...MUSCLES], secondary: [] };
+    for (const id of ['squatBack', 'lateralRaise'] as const) {
+      const p = PATTERNS[id];
+      const items = drawFrame(solvePose(loopFrames(p)[0], p.view, p.feet ?? 1), drawConfig(p, all));
+      const drawn = new Set(items.map((i) => i.m).filter(Boolean));
+      expect([...drawn].sort()).toEqual(MUSCLES.filter((m) => canShowMuscle(p.view, m)).sort());
+    }
   });
 
   it('returns null for custom or unknown exercises', () => {
@@ -63,6 +78,7 @@ describe('movement patterns', () => {
     // The drawing item list (kind + role) must not change during the loop: the renderer
     // mounts one animated element per item.
     const cfg = drawConfig(p, { primary: ['pecs', 'quads'], secondary: ['calves'] });
+    expect(drawStatic(cfg).every((i) => i.role === 'scene')).toBe(true);
     const layout = (t: number) => drawFrame(solvePose(poseAt(frames, t, p.hold ?? 0.12), p.view, p.feet ?? 1), cfg);
     const ref = layout(0).map((i) => `${i.k}:${i.role}:${i.w}`);
     for (let t = 0; t < frames.length; t += 0.25) {
