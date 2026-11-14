@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "Gym Tracker",
+    "slug": "gym-tracker",
+    "scheme": "gymtracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#090B0A",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.rakesh.gymtracker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Gym Tracker uses the camera to take progress photos that stay on your device.",
+        "NSPhotoLibraryUsageDescription": "Gym Tracker lets you pick progress photos from your library. Photos are copied into private app storage."
+      }
+    },
+    "android": {
+      "package": "com.rakesh.gymtracker",
+      "adaptiveIcon": {
+        "backgroundColor": "#090B0A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-audio",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#090B0A",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160
+        }
+      ],
+      "expo-image",
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#B6F23A"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gym Tracker lets you pick progress photos from your library. Photos are copied into private app storage.",
+          "cameraPermission": "Gym Tracker uses the camera to take progress photos that stay on your device.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
