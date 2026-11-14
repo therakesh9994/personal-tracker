@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
-import { BookOpen, ClipboardList, History, Play, PlusCircle, RotateCcw } from 'lucide-react-native';
+import { BookOpen, ClipboardList, History, Play, PlusCircle, RotateCcw, type LucideIcon } from 'lucide-react-native';
 import { Button, Card, Chip, EmptyState, ListItem, Row, Screen, SectionHeader, Text } from '@/components/ui';
 import * as W from '@/features/workouts/service';
 import { listPlans, getPlanDetail } from '@/features/plans/service';
@@ -46,22 +46,10 @@ export default function WorkoutTab() {
       )}
 
       <Row gap={spacing.sm}>
-        <Card style={{ flex: 1, alignItems: 'center' }} onPress={() => router.push('/workout/history')} accessibilityLabel="Workout history">
-          <History color={colors.accent} />
-          <Text variant="caption">History</Text>
-        </Card>
-        <Card style={{ flex: 1, alignItems: 'center' }} onPress={() => router.push('/plans')} accessibilityLabel="Workout plans">
-          <ClipboardList color={colors.accent} />
-          <Text variant="caption">Plans</Text>
-        </Card>
-        <Card style={{ flex: 1, alignItems: 'center' }} onPress={() => router.push('/exercise')} accessibilityLabel="Exercise library">
-          <BookOpen color={colors.accent} />
-          <Text variant="caption">Exercises</Text>
-        </Card>
-        <Card style={{ flex: 1, alignItems: 'center' }} onPress={() => router.push('/exercise/edit')} accessibilityLabel="Create custom exercise">
-          <PlusCircle color={colors.accent} />
-          <Text variant="caption">Custom</Text>
-        </Card>
+        <QuickTile icon={History} label="History" a11y="Workout history" onPress={() => router.push('/workout/history')} />
+        <QuickTile icon={ClipboardList} label="Plans" a11y="Workout plans" onPress={() => router.push('/plans')} />
+        <QuickTile icon={BookOpen} label="Exercises" a11y="Exercise library" onPress={() => router.push('/exercise')} />
+        <QuickTile icon={PlusCircle} label="Custom" a11y="Create custom exercise" onPress={() => router.push('/exercise/edit')} />
       </Row>
 
       <SectionHeader title="Start from a plan" action="All plans" onAction={() => router.push('/plans')} />
@@ -104,5 +92,20 @@ export default function WorkoutTab() {
         )}
       </Card>
     </Screen>
+  );
+}
+
+/**
+ * Compact shortcut tile. Four share a row, so the default card padding (16 px each side)
+ * would leave too little room for labels like "Exercises" on narrow phones.
+ */
+function QuickTile({ icon: Icon, label, a11y, onPress }: { icon: LucideIcon; label: string; a11y: string; onPress: () => void }) {
+  return (
+    <Card style={{ flex: 1, alignItems: 'center', paddingHorizontal: spacing.xs, paddingVertical: spacing.md, gap: spacing.xs }} onPress={onPress} accessibilityLabel={a11y}>
+      <Icon color={colors.accent} size={22} />
+      <Text variant="caption" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+        {label}
+      </Text>
+    </Card>
   );
 }
